@@ -62,7 +62,7 @@ const connection = new Connection(RPC_URL, "confirmed");
 // === WALLET ADDRESSES ===
 const TREASURY = new PublicKey("98tf4zU5WhLmsCt1D4HQH5Ej9C5aFwCz8KQwykmKvDDQ");
 const TRANS_FEE_WALLET = new PublicKey("CDfvckc6qBqBKaxXppPJrhkbZHHYvjVw2wAFjM38gX4B");
-const TOKEN_MINT = new PublicKey("4vTeHaoJGvrKduJrxVmfgkjzDYPzD8BJJDv5Afempump");
+const TOKEN_MINT = new PublicKey("CMuvfwFRM8W6vLSYYy2dF2jkc8zvjGF6pTkkyXEmpump");
 
 const TREASURY_PRIVATE_KEY = process.env.BOT_PRIVATE_KEY
   ? Uint8Array.from(JSON.parse(process.env.BOT_PRIVATE_KEY))
@@ -71,7 +71,7 @@ if (!TREASURY_PRIVATE_KEY) throw new Error("❌ BOT_PRIVATE_KEY missing!");
 const TREASURY_KEYPAIR = Keypair.fromSecretKey(TREASURY_PRIVATE_KEY);
 
 // === STATE ===
-let treasurySUNO = 0;  // Current round prize pool (resets each round)
+let treasuryFUND = 0;  // Current round prize pool (resets each round)
 let actualTreasuryBalance = 0;  // REAL treasury balance (grows perpetually)
 let transFeeCollected = 0;
 let pendingPayments = [];
@@ -157,10 +157,10 @@ async function getActualTreasuryBalance() {
     );
     
     const balance = await connection.getTokenAccountBalance(treasuryTokenAccount);
-    const sunoBalance = Math.floor(parseFloat(balance.value.uiAmount || 0));
+    const fundBalance = Math.floor(parseFloat(balance.value.uiAmount || 0));
     
-    console.log(`🏦 Treasury wallet balance: ${sunoBalance.toLocaleString()} SUNO`);
-    return sunoBalance;
+    console.log(`🏦 Treasury wallet balance: ${fundBalance.toLocaleString()} FUND`);
+    return fundBalance;
   } catch (err) {
     console.log(`⚠️ Could not fetch treasury balance: ${err.message}`);
     return actualTreasuryBalance; // Return current tracked value as fallback
@@ -292,7 +292,7 @@ async function transferTokensToRecipient(tokenAmount, recipientWallet) {
     }
     
     // Add transfer instruction
-    // Convert SUNO amount to raw amount (multiply by 1,000,000 for 6 decimals)
+    // Convert FUND amount to raw amount (multiply by 1,000,000 for 6 decimals)
     const rawAmount = Math.floor(tokenAmount * 1_000_000);
     
     tx.add(
@@ -330,7 +330,7 @@ async function transferTokensToRecipient(tokenAmount, recipientWallet) {
 // === CHECK IF TOKEN HAS BONDED ===
 async function checkIfBonded() {
   try {
-    console.log("🔍 Checking if SUNO has graduated from pump.fun...");
+    console.log("🔍 Checking if FUND has graduated from pump.fun...");
     
     const PUMP_PROGRAM = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
     
@@ -370,7 +370,7 @@ async function checkIfBonded() {
 async function buyOnPumpFun(solAmount) {
   try {
     console.log(`🚀 Starting pump.fun buy with PumpPortal API: ${solAmount.toFixed(4)} SOL`);
-    console.log(`📍 Buying to treasury, will split SUNO after...`);
+    console.log(`📍 Buying to treasury, will split FUND after...`);
     
     // Get treasury balance BEFORE purchase for accurate tracking
     const treasuryTokenAccount = await getAssociatedTokenAddress(
@@ -382,9 +382,9 @@ async function buyOnPumpFun(solAmount) {
     try {
       const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
       balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
-      console.log(`💰 Treasury balance BEFORE: ${balanceBefore.toLocaleString()} SUNO`);
+      console.log(`💰 Treasury balance BEFORE: ${balanceBefore.toLocaleString()} FUND`);
     } catch (e) {
-      console.log(`💰 Treasury balance BEFORE: 0 SUNO (account doesn't exist yet)`);
+      console.log(`💰 Treasury balance BEFORE: 0 FUND (account doesn't exist yet)`);
       balanceBefore = 0;
     }
     
@@ -443,11 +443,11 @@ async function buyOnPumpFun(solAmount) {
     const afterBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
     const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
     
-    const sunoReceived = balanceAfter - balanceBefore;
-    console.log(`🪙 Treasury received ${sunoReceived.toLocaleString()} SUNO`);
-    console.log(`📊 Treasury total balance: ${balanceAfter.toLocaleString()} SUNO`);
+    const fundReceived = balanceAfter - balanceBefore;
+    console.log(`🪙 Treasury received ${fundReceived.toLocaleString()} FUND`);
+    console.log(`📊 Treasury total balance: ${balanceAfter.toLocaleString()} FUND`);
     
-    return sunoReceived;
+    return fundReceived;
     
   } catch (err) {
     console.error(`❌ Pump.fun buy failed: ${err.message}`);
@@ -459,8 +459,8 @@ async function buyOnPumpFun(solAmount) {
 // === JUPITER SWAP ===
 async function buyOnJupiter(solAmount) {
   try {
-    console.log(`🪐 Starting Jupiter swap: ${solAmount.toFixed(4)} SOL → SUNO`);
-    console.log(`📍 Buying to treasury, will split SUNO after...`);
+    console.log(`🪐 Starting Jupiter swap: ${solAmount.toFixed(4)} SOL → FUND`);
+    console.log(`📍 Buying to treasury, will split FUND after...`);
     
     const lamports = Math.floor(solAmount * 1e9);
     
@@ -488,10 +488,10 @@ async function buyOnJupiter(solAmount) {
       throw new Error(`Quote failed: ${quoteData?.error || 'Unknown error'}`);
     }
     
-    // Jupiter returns raw amount - convert to SUNO
+    // Jupiter returns raw amount - convert to FUND
     const rawOutAmount = parseInt(quoteData.outAmount);
-    const outAmount = Math.floor(rawOutAmount / 1_000_000); // Convert to SUNO (6 decimals)
-    console.log(`💎 Quote received: ${outAmount.toLocaleString()} SUNO`);
+    const outAmount = Math.floor(rawOutAmount / 1_000_000); // Convert to FUND (6 decimals)
+    console.log(`💎 Quote received: ${outAmount.toLocaleString()} FUND`);
     
     // Get swap transaction (to treasury's token account)
     console.log("🔨 Building swap transaction...");
@@ -544,7 +544,7 @@ async function buyOnJupiter(solAmount) {
     await connection.confirmTransaction(sig, 'confirmed');
     
     console.log(`✅ Jupiter swap complete!`);
-    console.log(`🪙 Treasury received ${outAmount.toLocaleString()} SUNO tokens (will split next)`);
+    console.log(`🪙 Treasury received ${outAmount.toLocaleString()} FUND tokens (will split next)`);
     
     return outAmount;
     
@@ -556,21 +556,21 @@ async function buyOnJupiter(solAmount) {
 }
 
 // === MARKET INTEGRATION (Uses PumpPortal API with auto pool detection) ===
-async function buySUNOOnMarket(solAmount) {
+async function buyFUNDOnMarket(solAmount) {
   try {
-    console.log(`\n🔄 ========== BUYING SUNO ==========`);
+    console.log(`\n🔄 ========== BUYING FUND ==========`);
     console.log(`💰 Amount: ${solAmount.toFixed(4)} SOL`);
     console.log(`📍 Buying to treasury (will split after)`);
     
-    let sunoAmount;
+    let fundAmount;
     
     // Use PumpPortal API with auto pool detection (handles pump.fun AND graduated tokens)
     console.log("🚀 Using PumpPortal API with auto pool detection...");
-    sunoAmount = await buyOnPumpFun(solAmount);
+    fundAmount = await buyOnPumpFun(solAmount);
     
-    console.log(`✅ Purchase complete! ${sunoAmount.toLocaleString()} SUNO now in treasury`);
+    console.log(`✅ Purchase complete! ${fundAmount.toLocaleString()} FUND now in treasury`);
     console.log(`🔄 ===================================\n`);
-    return sunoAmount;
+    return fundAmount;
     
   } catch (err) {
     console.error(`❌ Market buy failed: ${err.message}`);
@@ -594,7 +594,7 @@ function saveState() {
         phase,
         cycleStartTime,
         nextPhaseTime,
-        treasurySUNO,
+        treasuryFUND,
         actualTreasuryBalance,
         transFeeCollected,
         pendingPayments
@@ -614,11 +614,11 @@ function loadState() {
     phase = d.phase || "submission";
     cycleStartTime = d.cycleStartTime || null;
     nextPhaseTime = d.nextPhaseTime || null;
-    treasurySUNO = d.treasurySUNO || 0;
+    treasuryFUND = d.treasuryFUND || 0;
     actualTreasuryBalance = d.actualTreasuryBalance || 0;
     transFeeCollected = d.transFeeCollected || 0;
     pendingPayments = d.pendingPayments || [];
-    console.log(`📂 State restored — ${participants.length} participants, phase: ${phase}, Treasury: ${actualTreasuryBalance.toLocaleString()} SUNO`);
+    console.log(`📂 State restored — ${participants.length} participants, phase: ${phase}, Treasury: ${actualTreasuryBalance.toLocaleString()} FUND`);
   } catch (e) {
     console.error("⚠️ Failed to load:", e.message);
   }
@@ -653,14 +653,14 @@ app.get("/", generalLimiter, async (_, res) => {
   const bonusPercentage = getTreasuryBonusPercentage();
   
   res.json({
-    status: "✅ SunoLabs Buy SUNO System Live",
+    status: "✅ GoFundMe Buy FUND System Live",
     mode: "webhook",
     phase,
     uploaders,
     voteOnly,
-    roundPrizePool: treasurySUNO.toLocaleString() + " SUNO",
-    actualTreasury: actualTreasuryBalance.toLocaleString() + " SUNO",
-    bonusPrize: `${calculateTreasuryBonus().toLocaleString()} SUNO (${(bonusPercentage * 100).toFixed(0)}%)`,
+    roundPrizePool: treasuryFUND.toLocaleString() + " FUND",
+    actualTreasury: actualTreasuryBalance.toLocaleString() + " FUND",
+    bonusPrize: `${calculateTreasuryBonus().toLocaleString()} FUND (${(bonusPercentage * 100).toFixed(0)}%)`,
     bonusChance: `1 in ${TREASURY_BONUS_CHANCE}`,
     transFees: transFeeCollected.toFixed(4) + " SOL",
     uptime: process.uptime()
@@ -753,10 +753,10 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
     
     console.log(`\n💰 ========== PAYMENT SPLIT ==========`);
     console.log(`🏦 Trans Fee (10%): ${transFee.toFixed(4)} SOL → Fee wallet`);
-    console.log(`💎 Buy SUNO with: ${remainingSOL.toFixed(4)} SOL`);
-    console.log(`📊 Then split SUNO tokens:`);
-    console.log(`   👤 User gets: ${(retention * 100).toFixed(0)}% of SUNO`);
-    console.log(`   🏆 Competition pool: ${((1 - retention) * 100).toFixed(0)}% of SUNO`);
+    console.log(`💎 Buy FUND with: ${remainingSOL.toFixed(4)} SOL`);
+    console.log(`📊 Then split FUND tokens:`);
+    console.log(`   👤 User gets: ${(retention * 100).toFixed(0)}% of FUND`);
+    console.log(`   🏆 Competition pool: ${((1 - retention) * 100).toFixed(0)}% of FUND`);
     console.log(`${tier.badge} Tier: ${tier.name} | ${multiplier}x multiplier`);
     console.log(`=====================================\n`);
 
@@ -770,9 +770,9 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
       console.error(`❌ Trans fee failed: ${err.message}`);
     }
 
-    // === BUY SUNO WITH ALL REMAINING SOL ===
-    let totalSUNO = 0;
-    console.log("\n🪙 Starting SUNO purchase with ALL remaining SOL...");
+    // === BUY FUND WITH ALL REMAINING SOL ===
+    let totalFUND = 0;
+    console.log("\n🪙 Starting FUND purchase with ALL remaining SOL...");
     
     // Get treasury balance BEFORE purchase
     let balanceBefore = 0;
@@ -783,14 +783,14 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
       );
       const beforeBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
       balanceBefore = Math.floor(parseFloat(beforeBalance.value.uiAmount || 0));
-      console.log(`📊 Treasury balance BEFORE: ${balanceBefore.toLocaleString()} SUNO`);
+      console.log(`📊 Treasury balance BEFORE: ${balanceBefore.toLocaleString()} FUND`);
     } catch (e) {
-      console.log(`📊 Treasury balance BEFORE: 0 SUNO (account doesn't exist yet)`);
+      console.log(`📊 Treasury balance BEFORE: 0 FUND (account doesn't exist yet)`);
       balanceBefore = 0;
     }
     
     try {
-      await buySUNOOnMarket(remainingSOL); // Execute purchase
+      await buyFUNDOnMarket(remainingSOL); // Execute purchase
       
       // Get treasury balance AFTER purchase
       const treasuryTokenAccount = await getAssociatedTokenAddress(
@@ -800,80 +800,80 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
       await new Promise(r => setTimeout(r, 2000)); // Wait for balance update
       const afterBalance = await connection.getTokenAccountBalance(treasuryTokenAccount);
       const balanceAfter = Math.floor(parseFloat(afterBalance.value.uiAmount || 0));
-      console.log(`📊 Treasury balance AFTER: ${balanceAfter.toLocaleString()} SUNO`);
+      console.log(`📊 Treasury balance AFTER: ${balanceAfter.toLocaleString()} FUND`);
       
       // Calculate actual tokens received
-      totalSUNO = balanceAfter - balanceBefore;
-      console.log(`\n✅ SUNO purchase SUCCESS: ${totalSUNO.toLocaleString()} SUNO tokens received`);
+      totalFUND = balanceAfter - balanceBefore;
+      console.log(`\n✅ FUND purchase SUCCESS: ${totalFUND.toLocaleString()} FUND tokens received`);
     } catch (err) {
-      console.error(`\n❌ SUNO purchase FAILED: ${err.message}`);
+      console.error(`\n❌ FUND purchase FAILED: ${err.message}`);
       console.error(err.stack);
     }
 
     // === CHECK IF PURCHASE WAS SUCCESSFUL ===
-    if (totalSUNO === 0 || !totalSUNO) {
-      console.log("⚠️ SUNO purchase returned 0 tokens - notifying user of failure");
+    if (totalFUND === 0 || !totalFUND) {
+      console.log("⚠️ FUND purchase returned 0 tokens - notifying user of failure");
       
       try {
         await bot.sendMessage(
           userId,
-          `❌ Purchase Failed!\n\n⚠️ We received your ${amountNum} SOL payment, but the SUNO token purchase failed.\n\n🔄 Please contact support or try again.\n\nError: Token purchase returned 0 tokens.`
+          `❌ Purchase Failed!\n\n⚠️ We received your ${amountNum} SOL payment, but the FUND token purchase failed.\n\n🔄 Please contact support or try again.\n\nError: Token purchase returned 0 tokens.`
         );
       } catch (e) {
         console.error("⚠️ Failed to send error message:", e.message);
       }
       
       console.log("✅ Error notification sent - returning error to client\n");
-      return res.json({ ok: false, error: "SUNO purchase failed", sunoAmount: 0 });
+      return res.json({ ok: false, error: "FUND purchase failed", fundAmount: 0 });
     }
 
-    // === SPLIT SUNO TOKENS ===
-    const userSUNO = Math.floor(totalSUNO * retention);
-    const competitionSUNO = totalSUNO - userSUNO;
+    // === SPLIT FUND TOKENS ===
+    const userFUND = Math.floor(totalFUND * retention);
+    const competitionFUND = totalFUND - userFUND;
     
-    console.log(`\n💎 ========== SUNO TOKEN SPLIT ==========`);
-    console.log(`🪙 Total SUNO bought: ${totalSUNO.toLocaleString()}`);
-    console.log(`👤 User gets: ${userSUNO.toLocaleString()} SUNO (${(retention * 100).toFixed(0)}%)`);
-    console.log(`🏆 Competition pool: ${competitionSUNO.toLocaleString()} SUNO (${((1 - retention) * 100).toFixed(0)}%)`);
+    console.log(`\n💎 ========== FUND TOKEN SPLIT ==========`);
+    console.log(`🪙 Total FUND bought: ${totalFUND.toLocaleString()}`);
+    console.log(`👤 User gets: ${userFUND.toLocaleString()} FUND (${(retention * 100).toFixed(0)}%)`);
+    console.log(`🏆 Competition pool: ${competitionFUND.toLocaleString()} FUND (${((1 - retention) * 100).toFixed(0)}%)`);
     console.log(`========================================\n`);
 
     // === TRANSFER USER'S PORTION ===
-    console.log(`📤 Transferring ${userSUNO.toLocaleString()} SUNO to user...`);
-    const transferSuccess = await transferTokensToRecipient(userSUNO, senderWallet);
+    console.log(`📤 Transferring ${userFUND.toLocaleString()} FUND to user...`);
+    const transferSuccess = await transferTokensToRecipient(userFUND, senderWallet);
     
     if (!transferSuccess) {
       console.error("❌ Transfer failed!");
       try {
         await bot.sendMessage(
           userId,
-          `❌ Transfer Failed!\n\n⚠️ SUNO purchase succeeded but transfer to your wallet failed.\n\nPlease contact support.`
+          `❌ Transfer Failed!\n\n⚠️ FUND purchase succeeded but transfer to your wallet failed.\n\nPlease contact support.`
         );
       } catch (e) {}
-      return res.json({ ok: false, error: "Transfer failed", sunoAmount: 0 });
+      return res.json({ ok: false, error: "Transfer failed", fundAmount: 0 });
     }
 
-    console.log(`✅ ${userSUNO.toLocaleString()} SUNO → ${senderWallet.substring(0, 8)}...`);
+    console.log(`✅ ${userFUND.toLocaleString()} FUND → ${senderWallet.substring(0, 8)}...`);
 
     // === SPLIT COMPETITION POOL ===
     // 65% goes to round prize pool (gets distributed)
     // 35% goes to permanent treasury (saved, only used for bonus)
-    const roundPool = Math.floor(competitionSUNO * 0.65);
-    const permanentTreasury = competitionSUNO - roundPool;
+    const roundPool = Math.floor(competitionFUND * 0.65);
+    const permanentTreasury = competitionFUND - roundPool;
     
-    treasurySUNO += roundPool;
+    treasuryFUND += roundPool;
     actualTreasuryBalance += permanentTreasury;
     
     console.log(`\n🏦 Pool Distribution:`);
-    console.log(`   Round Pool: +${roundPool.toLocaleString()} SUNO (65%) → Total: ${treasurySUNO.toLocaleString()} SUNO`);
-    console.log(`   Permanent Treasury: +${permanentTreasury.toLocaleString()} SUNO (35%) → Total: ${actualTreasuryBalance.toLocaleString()} SUNO`);
-    console.log(`   Bonus Prize Available: ${calculateTreasuryBonus().toLocaleString()} SUNO (${(getTreasuryBonusPercentage() * 100).toFixed(0)}%)`);
+    console.log(`   Round Pool: +${roundPool.toLocaleString()} FUND (65%) → Total: ${treasuryFUND.toLocaleString()} FUND`);
+    console.log(`   Permanent Treasury: +${permanentTreasury.toLocaleString()} FUND (35%) → Total: ${actualTreasuryBalance.toLocaleString()} FUND`);
+    console.log(`   Bonus Prize Available: ${calculateTreasuryBonus().toLocaleString()} FUND (${(getTreasuryBonusPercentage() * 100).toFixed(0)}%)`);
 
     // === SAVE USER DATA ===
     const userData = {
       userId: userKey,
       wallet: senderWallet,
       amount: amountNum,
-      sunoReceived: userSUNO,
+      fundReceived: userFUND,
       tier: tier.name,
       tierBadge: tier.badge,
       retention: (retention * 100).toFixed(0) + "%",
@@ -899,7 +899,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
         try {
           await bot.sendMessage(
             userId,
-            `✅ Payment complete!\n\n🪙 ${userSUNO.toLocaleString()} SUNO sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier\n\n⚠️ No story found - registered as voter.\n🗳️ Vote during voting phase to earn rewards!`
+            `✅ Payment complete!\n\n🪙 ${userFUND.toLocaleString()} FUND sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier\n\n⚠️ No story found - registered as voter.\n🗳️ Vote during voting phase to earn rewards!`
           );
         } catch (e) {
           console.error("⚠️ DM error:", e.message);
@@ -927,7 +927,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
         try {
           await bot.sendMessage(
             userId,
-            `✅ Story entered!\n\n🪙 ${userSUNO.toLocaleString()} SUNO sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier\n\n📝 Your story is in the competition!${timeUntilVote}\n🍀 Good luck!`
+            `✅ Story entered!\n\n🪙 ${userFUND.toLocaleString()} FUND sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier\n\n📝 Your story is in the competition!${timeUntilVote}\n🍀 Good luck!`
           );
         } catch (e) {
           console.error("⚠️ DM error:", e.message);
@@ -937,7 +937,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
         try {
           await bot.sendMessage(
             `@${MAIN_CHANNEL}`,
-            `💰 +${roundPool.toLocaleString()} SUNO added to prize pool!\n📝 ${payment.user} shared their story\n\n💎 Current Pool: ${treasurySUNO.toLocaleString()} SUNO`
+            `💰 +${roundPool.toLocaleString()} FUND added to prize pool!\n📝 ${payment.user} shared their story\n\n💎 Current Pool: ${treasuryFUND.toLocaleString()} FUND`
           );
         } catch (e) {
           console.error("⚠️ Main channel announcement error:", e.message);
@@ -946,7 +946,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
         try {
           await bot.sendMessage(
             `@${CHANNEL}`,
-            `💰 +${roundPool.toLocaleString()} SUNO added!\n📝 ${payment.user} - New story submitted\n\n💎 Pool: ${treasurySUNO.toLocaleString()} SUNO`
+            `💰 +${roundPool.toLocaleString()} FUND added!\n📝 ${payment.user} - New story submitted\n\n💎 Pool: ${treasuryFUND.toLocaleString()} FUND`
           );
         } catch (e) {
           console.error("⚠️ Submissions channel announcement error:", e.message);
@@ -973,7 +973,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
       try {
         await bot.sendMessage(
           userId,
-          `✅ Registered as voter!\n\n🪙 ${userSUNO.toLocaleString()} SUNO sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier${timeUntilVote}\n\n🗳️ Vote during voting phase to earn rewards!`
+          `✅ Registered as voter!\n\n🪙 ${userFUND.toLocaleString()} FUND sent!\n${tier.badge} ${tier.name} tier (${(retention * 100).toFixed(0)}% retention)\n💰 ${multiplier}x prize multiplier${timeUntilVote}\n\n🗳️ Vote during voting phase to earn rewards!`
         );
       } catch (e) {
         console.error("⚠️ DM error:", e.message);
@@ -983,7 +983,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
       try {
         await bot.sendMessage(
           `@${MAIN_CHANNEL}`,
-          `💰 +${roundPool.toLocaleString()} SUNO added to prize pool!\n🗳️ New voter joined\n\n💎 Current Pool: ${treasurySUNO.toLocaleString()} SUNO`
+          `💰 +${roundPool.toLocaleString()} FUND added to prize pool!\n🗳️ New voter joined\n\n💎 Current Pool: ${treasuryFUND.toLocaleString()} FUND`
         );
       } catch (e) {
         console.error("⚠️ Main channel announcement error:", e.message);
@@ -992,7 +992,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
       try {
         await bot.sendMessage(
           `@${CHANNEL}`,
-          `💰 +${roundPool.toLocaleString()} SUNO added!\n🗳️ Voter joined\n\n💎 Pool: ${treasurySUNO.toLocaleString()} SUNO`
+          `💰 +${roundPool.toLocaleString()} FUND added!\n🗳️ Voter joined\n\n💎 Pool: ${treasuryFUND.toLocaleString()} FUND`
         );
       } catch (e) {
         console.error("⚠️ Submissions channel announcement error:", e.message);
@@ -1008,7 +1008,7 @@ app.post("/confirm-payment", paymentLimiter, async (req, res) => {
     saveState();
 
     console.log("✅ Payment processing complete - returning success to client\n");
-    res.json({ ok: true, sunoAmount: userSUNO });
+    res.json({ ok: true, fundAmount: userFUND });
   } catch (err) {
     console.error(`\n💥 FATAL ERROR in confirm-payment: ${err.message}`);
     console.error(err.stack);
@@ -1040,12 +1040,12 @@ async function sendSOLPayout(destination, amountSOL, reason = "payout") {
   }
 }
 
-// === SUNO TOKEN PAYOUT ===
-async function sendSUNOPayout(destination, amountSUNO, reason = "payout") {
+// === FUND TOKEN PAYOUT ===
+async function sendFUNDPayout(destination, amountFUND, reason = "payout") {
   try {
-    console.log(`💸 ${reason}: ${amountSUNO.toLocaleString()} SUNO → ${destination.substring(0, 8)}...`);
+    console.log(`💸 ${reason}: ${amountFUND.toLocaleString()} FUND → ${destination.substring(0, 8)}...`);
     
-    const success = await transferTokensToRecipient(amountSUNO, destination);
+    const success = await transferTokensToRecipient(amountFUND, destination);
     
     if (!success) {
       console.error(`⚠️ ${reason} failed!`);
@@ -1068,17 +1068,17 @@ async function startNewCycle() {
   const botUsername = '@gofundme_overlord_bot';
   const treasuryBonus = calculateTreasuryBonus();
   
-  const prizePoolText = treasurySUNO === 0 && actualTreasuryBalance === 0 ? "Loading..." : `${treasurySUNO.toLocaleString()} SUNO`;
-  const bonusPrizeText = actualTreasuryBalance === 0 ? "Loading..." : `+${treasuryBonus.toLocaleString()} SUNO (1/500)`;
+  const prizePoolText = treasuryFUND === 0 && actualTreasuryBalance === 0 ? "Loading..." : `${treasuryFUND.toLocaleString()} FUND`;
+  const bonusPrizeText = actualTreasuryBalance === 0 ? "Loading..." : `+${treasuryBonus.toLocaleString()} FUND (1/500)`;
   
-  console.log(`🎬 NEW CYCLE: Submission phase (5 min), Round pool: ${treasurySUNO.toLocaleString()} SUNO, Bonus: ${treasuryBonus.toLocaleString()} SUNO`);
+  console.log(`🎬 NEW CYCLE: Submission phase (5 min), Round pool: ${treasuryFUND.toLocaleString()} FUND, Bonus: ${treasuryBonus.toLocaleString()} FUND`);
   
   try {
     const botMention = botUsername.startsWith('@') ? botUsername : `@${botUsername}`;
     
     await bot.sendMessage(
       `@${MAIN_CHANNEL}`,
-      `🚨 NEW BEGGING ROUND STARTED! 🚨\n\n💰 Prize Pool: Loading...\n🎰 Bonus Jackpot: ${bonusPrizeText}\n⏰ 5 minutes to beg for money!\n\n🎮 How It Works:\n1️⃣ Open ${botMention}\n2️⃣ Type /start\n3️⃣ Choose your strategy:\n   😭 Share sob story & compete\n   🤝 Vote for others & get paid\n4️⃣ Buy SUNO tokens (0.01 SOL min)\n5️⃣ Win SUNO! 💸\n\n🤑 May the saddest story win!`
+      `🚨 NEW BEGGING ROUND STARTED! 🚨\n\n💰 Prize Pool: Loading...\n🎰 Bonus Jackpot: ${bonusPrizeText}\n⏰ 5 minutes to beg for money!\n\n🎮 How It Works:\n1️⃣ Open ${botMention}\n2️⃣ Type /start\n3️⃣ Choose your strategy:\n   😭 Share sob story & compete\n   🤝 Vote for others & get paid\n4️⃣ Buy FUND tokens (0.01 SOL min)\n5️⃣ Win FUND! 💸\n\n🤑 May the saddest story win!`
     );
     console.log("✅ Posted cycle start to main channel");
   } catch (err) {
@@ -1100,7 +1100,7 @@ async function startVoting() {
     try {
       await bot.sendMessage(
         `@${MAIN_CHANNEL}`,
-        `⏰ No stories submitted this round.\n\n💰 ${treasurySUNO.toLocaleString()} SUNO carries over!\n\n🎮 New round starting in 1 minute...`
+        `⏰ No stories submitted this round.\n\n💰 ${treasuryFUND.toLocaleString()} FUND carries over!\n\n🎮 New round starting in 1 minute...`
       );
     } catch {}
     
@@ -1122,14 +1122,14 @@ async function startVoting() {
   try {
     await bot.sendMessage(
       `@${MAIN_CHANNEL}`,
-      `🗳️ VOTING STARTED!\n\n📝 ${storySubmitters.length} stor${storySubmitters.length !== 1 ? 'ies' : 'y'} competing\n⏰ ${votingMinutes} minutes to vote!\n\n💰 Prize Pool: ${treasurySUNO.toLocaleString()} SUNO\n🎰 Bonus Prize: +${treasuryBonus.toLocaleString()} SUNO (1/500)\n\n🔥 Read stories & vote for who needs help most!\n📍 Vote here: https://t.me/${CHANNEL}\n\n🏆 Winners get 80% of prize pool\n💰 Voters who pick the winner share 20%!`
+      `🗳️ VOTING STARTED!\n\n📝 ${storySubmitters.length} stor${storySubmitters.length !== 1 ? 'ies' : 'y'} competing\n⏰ ${votingMinutes} minutes to vote!\n\n💰 Prize Pool: ${treasuryFUND.toLocaleString()} FUND\n🎰 Bonus Prize: +${treasuryBonus.toLocaleString()} FUND (1/500)\n\n🔥 Read stories & vote for who needs help most!\n📍 Vote here: https://t.me/${CHANNEL}\n\n🏆 Winners get 80% of prize pool\n💰 Voters who pick the winner share 20%!`
     );
   } catch {}
 
   try {
     await bot.sendMessage(
       `@${CHANNEL}`,
-      `🗳️ VOTING STARTED!\n\n💰 Prize Pool: ${treasurySUNO.toLocaleString()} SUNO\n🎰 Bonus Prize: +${treasuryBonus.toLocaleString()} SUNO (1/500)\n⏰ ${votingMinutes} minutes to vote!\n\n📝 Read each story below\n🔥 Vote for who you want to help!\n\n🏆 Top 5 stories win prizes\n💎 Vote for the winner = earn rewards!`
+      `🗳️ VOTING STARTED!\n\n💰 Prize Pool: ${treasuryFUND.toLocaleString()} FUND\n🎰 Bonus Prize: +${treasuryBonus.toLocaleString()} FUND (1/500)\n⏰ ${votingMinutes} minutes to vote!\n\n📝 Read each story below\n🔥 Vote for who you want to help!\n\n🏆 Top 5 stories win prizes\n💎 Vote for the winner = earn rewards!`
     );
 
     for (const p of storySubmitters) {
@@ -1161,7 +1161,7 @@ async function announceWinners() {
     console.log("🚫 No stories");
     participants = [];
     voters = [];
-    treasurySUNO = 0;
+    treasuryFUND = 0;
     pendingPayments = [];
     saveState();
     setTimeout(() => startNewCycle(), 60 * 1000);
@@ -1173,20 +1173,20 @@ async function announceWinners() {
   const treasuryBonusAmount = calculateTreasuryBonus();
   
   if (wonTreasuryBonus) {
-    console.log(`🎰 BONUS PRIZE HIT! Winner gets +${treasuryBonusAmount.toLocaleString()} SUNO!`);
+    console.log(`🎰 BONUS PRIZE HIT! Winner gets +${treasuryBonusAmount.toLocaleString()} FUND!`);
   }
 
   const sorted = [...storySubmitters].sort((a, b) => b.votes - a.votes);
   const weights = [0.40, 0.25, 0.20, 0.10, 0.05];
   const numWinners = Math.min(5, sorted.length);
   
-  const prizePool = Math.floor(treasurySUNO * 0.80);
-  const voterPool = treasurySUNO - prizePool;
+  const prizePool = Math.floor(treasuryFUND * 0.80);
+  const voterPool = treasuryFUND - prizePool;
   
-  let resultsMsg = `🏆 Competition Results 🏆\n💰 Prize Pool: ${prizePool.toLocaleString()} SUNO\n`;
+  let resultsMsg = `🏆 Competition Results 🏆\n💰 Prize Pool: ${prizePool.toLocaleString()} FUND\n`;
   
   if (wonTreasuryBonus) {
-    resultsMsg += `🎰✨ BONUS PRIZE HIT! ✨🎰\nWinner gets +${treasuryBonusAmount.toLocaleString()} SUNO bonus!\n`;
+    resultsMsg += `🎰✨ BONUS PRIZE HIT! ✨🎰\nWinner gets +${treasuryBonusAmount.toLocaleString()} FUND bonus!\n`;
   }
   
   resultsMsg += `\n`;
@@ -1203,14 +1203,14 @@ async function announceWinners() {
     }
     
     const bonusTag = (i === 0 && wonTreasuryBonus) ? ` (+ ${treasuryBonusAmount.toLocaleString()} bonus!)` : '';
-    resultsMsg += `#${i + 1} ${w.tierBadge} ${w.user} — ${w.votes}🔥 — ${finalAmt.toLocaleString()} SUNO${bonusTag}\n`;
+    resultsMsg += `#${i + 1} ${w.tierBadge} ${w.user} — ${w.votes}🔥 — ${finalAmt.toLocaleString()} FUND${bonusTag}\n`;
     
     if (w.wallet && finalAmt > 0) {
-      await sendSUNOPayout(w.wallet, finalAmt, `Prize #${i + 1}`);
+      await sendFUNDPayout(w.wallet, finalAmt, `Prize #${i + 1}`);
       
       try {
-        const bonusMsg = (i === 0 && wonTreasuryBonus) ? `\n🎰 BONUS PRIZE: +${treasuryBonusAmount.toLocaleString()} SUNO!` : '';
-        await bot.sendMessage(w.userId, `🎉 You won ${finalAmt.toLocaleString()} SUNO!${bonusMsg} Check your wallet! 🎊`);
+        const bonusMsg = (i === 0 && wonTreasuryBonus) ? `\n🎰 BONUS PRIZE: +${treasuryBonusAmount.toLocaleString()} FUND!` : '';
+        await bot.sendMessage(w.userId, `🎉 You won ${finalAmt.toLocaleString()} FUND!${bonusMsg} Check your wallet! 🎊`);
       } catch {}
     }
   }
@@ -1221,16 +1221,16 @@ async function announceWinners() {
   if (winnerVoters.length > 0 && voterPool > 0) {
     const totalVoterAmount = winnerVoters.reduce((sum, v) => sum + v.amount, 0);
     
-    resultsMsg += `\n🗳️ Voter Rewards: ${voterPool.toLocaleString()} SUNO\n`;
+    resultsMsg += `\n🗳️ Voter Rewards: ${voterPool.toLocaleString()} FUND\n`;
     
     for (const v of winnerVoters) {
       const share = Math.floor((v.amount / totalVoterAmount) * voterPool);
       
       if (share > 0) {
-        await sendSUNOPayout(v.wallet, share, "Voter reward");
+        await sendFUNDPayout(v.wallet, share, "Voter reward");
         
         try {
-          await bot.sendMessage(v.userId, `🎉 You voted for the winner!\nReward: ${share.toLocaleString()} SUNO 💰`);
+          await bot.sendMessage(v.userId, `🎉 You voted for the winner!\nReward: ${share.toLocaleString()} FUND 💰`);
         } catch {}
       }
     }
@@ -1248,18 +1248,18 @@ async function announceWinners() {
     
     await bot.sendMessage(
       `@${MAIN_CHANNEL}`,
-      `🎉 WINNER: ${winner.tierBadge} ${winner.user}\n💰 Won ${winnerPrize.toLocaleString()} SUNO${bonusText}!\n\n🏆 See full results in @${CHANNEL}\n⏰ Next round starts in 1 minute!\n\n🎮 Type /start in the bot to play!`
+      `🎉 WINNER: ${winner.tierBadge} ${winner.user}\n💰 Won ${winnerPrize.toLocaleString()} FUND${bonusText}!\n\n🏆 See full results in @${CHANNEL}\n⏰ Next round starts in 1 minute!\n\n🎮 Type /start in the bot to play!`
     );
   } catch {}
 
-  console.log(`💰 Distributed ${treasurySUNO.toLocaleString()} SUNO from round pool`);
+  console.log(`💰 Distributed ${treasuryFUND.toLocaleString()} FUND from round pool`);
   if (wonTreasuryBonus) {
-    console.log(`🎰 Bonus prize paid: ${treasuryBonusAmount.toLocaleString()} SUNO from treasury`);
+    console.log(`🎰 Bonus prize paid: ${treasuryBonusAmount.toLocaleString()} FUND from treasury`);
   }
   
   participants = [];
   voters = [];
-  treasurySUNO = 0;
+  treasuryFUND = 0;
   pendingPayments = [];
   saveState();
   
@@ -1290,7 +1290,7 @@ bot.onText(/\/start|play/i, async (msg) => {
 
   await bot.sendMessage(
     userId,
-    `💸 Welcome to GoFundMe (but make it degenerate)\n\n💰 Prize Pool: ${treasurySUNO.toLocaleString()} SUNO\n🎰 Jackpot: +${treasuryBonus.toLocaleString()} SUNO (1/500 chance)${timeMessage}\n\n📍 Watch the trainwreck: https://t.me/${CHANNEL}\n\n🎭 Choose your grift:`,
+    `💸 Welcome to GoFundMe (but make it degenerate)\n\n💰 Prize Pool: ${treasuryFUND.toLocaleString()} FUND\n🎰 Jackpot: +${treasuryBonus.toLocaleString()} FUND (1/500 chance)${timeMessage}\n\n📍 Watch the trainwreck: https://t.me/${CHANNEL}\n\n🎭 Choose your grift:`,
     {
       reply_markup: {
         inline_keyboard: [
@@ -1372,7 +1372,7 @@ bot.on("message", async (msg) => {
         {
           reply_markup: {
             inline_keyboard: [
-              [{ text: "🪙 Buy SUNO & Enter Fundraiser", url: redirectLink }]
+              [{ text: "🪙 Buy FUND & Enter Fundraiser", url: redirectLink }]
             ]
           }
         }
@@ -1400,11 +1400,11 @@ bot.on("message", async (msg) => {
 
     await bot.sendMessage(
       userId,
-      `✅ Story received! (${charCount}/${MAX_STORY_LENGTH} characters)\n\n📝 "${storyText.substring(0, 100)}${storyText.length > 100 ? '...' : ''}"\n\n🪙 Now buy SUNO tokens to enter the fundraiser!`,
+      `✅ Story received! (${charCount}/${MAX_STORY_LENGTH} characters)\n\n📝 "${storyText.substring(0, 100)}${storyText.length > 100 ? '...' : ''}"\n\n🪙 Now buy FUND tokens to enter the fundraiser!`,
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: "🪙 Buy SUNO & Enter Fundraiser", url: redirectLink }]
+            [{ text: "🪙 Buy FUND & Enter Fundraiser", url: redirectLink }]
           ]
         }
       }
@@ -1487,11 +1487,11 @@ bot.on("callback_query", async (q) => {
         await bot.answerCallbackQuery(q.id, { text: "✅ Vote mode selected!" });
         await bot.sendMessage(
           userKey,
-          `🗳️ Vote Only & Earn!\n\n🪙 Buy SUNO tokens to participate!\n\n⏱️ Complete payment within ${Math.ceil(PAYMENT_TIMEOUT / 60000)} minutes.`,
+          `🗳️ Vote Only & Earn!\n\n🪙 Buy FUND tokens to participate!\n\n⏱️ Complete payment within ${Math.ceil(PAYMENT_TIMEOUT / 60000)} minutes.`,
           {
             reply_markup: {
               inline_keyboard: [
-                [{ text: "🪙 Buy SUNO & Join as Voter", url: redirectLink }]
+                [{ text: "🪙 Buy FUND & Join as Voter", url: redirectLink }]
               ]
             }
           }
@@ -1548,7 +1548,7 @@ bot.on("callback_query", async (q) => {
 
 // === STARTUP ===
 app.listen(PORT, async () => {
-  console.log(`🌐 SunoLabs Buy SUNO Bot on port ${PORT}`);
+  console.log(`🌐 GoFundMe Buy FUND Bot on port ${PORT}`);
   
   loadState();
   
@@ -1559,9 +1559,9 @@ app.listen(PORT, async () => {
     saveState();
   }
   
-  console.log(`💰 Current round pool: ${treasurySUNO.toLocaleString()} SUNO`);
-  console.log(`🏦 Actual treasury: ${actualTreasuryBalance.toLocaleString()} SUNO`);
-  console.log(`🎰 Bonus prize: ${calculateTreasuryBonus().toLocaleString()} SUNO (${(getTreasuryBonusPercentage() * 100).toFixed(0)}%)`);
+  console.log(`💰 Current round pool: ${treasuryFUND.toLocaleString()} FUND`);
+  console.log(`🏦 Actual treasury: ${actualTreasuryBalance.toLocaleString()} FUND`);
+  console.log(`🎰 Bonus prize: ${calculateTreasuryBonus().toLocaleString()} FUND (${(getTreasuryBonusPercentage() * 100).toFixed(0)}%)`);
   
   const webhookUrl = `https://gofundme-o0cn.onrender.com/webhook/${token}`;
   try {
@@ -1612,4 +1612,4 @@ setInterval(async () => {
   }
 }, 10 * 60 * 1000); // Every 10 minutes
 
-console.log("✅ SunoLabs Buy SUNO Bot initialized...");
+console.log("✅ GoFundMe Buy FUND Bot initialized...");
